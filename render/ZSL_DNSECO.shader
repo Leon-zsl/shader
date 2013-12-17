@@ -142,7 +142,6 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 							  _cube_fresnel_multiple, 
 							  _cube_fresnel_bias);
 
-			half fr = 1;
 			half3 cube = _cube_color.rgb * rim.rgb * fr;
 
 			//emmis
