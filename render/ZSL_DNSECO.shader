@@ -108,10 +108,8 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 		
 		struct Input {
 			float2 uv_diffuse_tex;
-			float3 worldPos;
 			float3 worldRefl;
-			float3 worldNormal;
-			INTERNAL_DATA 
+			float3 worldNormal; INTERNAL_DATA 
 		};
 
 		void surf (Input IN, inout ZSLSurfaceOutput o) {
@@ -130,14 +128,15 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 			o.Specular = spec;
 
 			//fresnel cube
+			half3 worldNormal = WorldNormalVector(IN, o.Normal);
+			half3 worldRefl = WorldReflectionVector(IN, o.Normal);
+			half3 viewDir = reflect(-worldRefl, worldNormal);
+
 			half4 mask = tex2D(_cube_mask, (IN.uv_diffuse_tex.xyxy).xy);
-			float3 worldRefl = WorldReflectionVector (IN, o.Normal);
 			half3 rim = texCUBE(_cube_tex, worldRefl).rgb;
 			rim = rim.rgb * mask.a;
-			
-			half3 viewDir = normalize(_WorldSpaceCameraPos - IN.worldPos);
-			half3 normal = WorldNormalVector(IN, o.Normal);
-			half fr = fresnel(normal, viewDir, 
+
+			half fr = fresnel(worldNormal, viewDir, 
 							  _cube_fresnel_power, 
 							  _cube_fresnel_multiple, 
 							  _cube_fresnel_bias);
