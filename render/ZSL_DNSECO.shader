@@ -110,7 +110,7 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 			float2 uv_diffuse_tex;
 			float3 worldPos;
 			float3 worldRefl;
-			//float3 worldNormal;
+			float3 worldNormal;
 			INTERNAL_DATA 
 		};
 
@@ -135,12 +135,12 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 			half3 rim = texCUBE(_cube_tex, worldRefl).rgb;
 			rim = rim.rgb * mask.a;
 			
-			// half3 viewDir = normalize(_WorldSpaceCameraPos - IN.worldPos);
-			// half3 normal = WorldNormalVector(IN, o.Normal);
-			// half fr = fresnel(normal, viewDir, 
-			// 				  _cube_fresnel_power, 
-			// 				  _cube_fresnel_multiple, 
-			// 				  _cube_fresnel_bias);
+			half3 viewDir = normalize(_WorldSpaceCameraPos - IN.worldPos);
+			half3 normal = WorldNormalVector(IN, o.Normal);
+			half fr = fresnel(normal, viewDir, 
+							  _cube_fresnel_power, 
+							  _cube_fresnel_multiple, 
+							  _cube_fresnel_bias);
 
 			half fr = 1;
 			half3 cube = _cube_color.rgb * rim.rgb * fr;
