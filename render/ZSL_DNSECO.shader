@@ -41,7 +41,7 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 		ColorMask RGBA
 
 		CGPROGRAM
-		#pragma surface surf BlinnPhongDHD
+		#pragma surface surf BlinnPhongZSL
 		#pragma target 3.0
 
 
@@ -60,7 +60,7 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 		float _cube_fresnel_bias;
 		float4 _cube_color;
 
-		struct DHDSurfaceOutput {
+		struct ZSLSurfaceOutput {
 			half3 Albedo;
 			half3 Normal;
 			half3 Emission;
@@ -83,29 +83,37 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 			return saturate(fresnel);
 		}
 
-		half4 LightingBlinnPhongDHD (DHDSurfaceOutput s, half3 lightDir, half3 viewDir, half atten)
+		half4 LightingBlinnPhongZSL (ZSLSurfaceOutput s, half3 lightDir, half3 viewDir, half atten)
 		{
-			half3 h = normalize (lightDir + viewDir);
 			half diff = max (0, dot ( lightDir, s.Normal ));
+
+			half3 h = normalize (lightDir + viewDir);
 			half nh = max (0, dot (s.Normal, h));
+			//should we use luminance or not?
+			//half spec = pow (nh, s.Gloss * 128.0) * Luminance (s.Specular.rgb);
+			//why 128?
 			half spec = pow (nh, s.Gloss * 128.0);
+			//half spec = pow (nh, s.Gloss);
 			
+			//light
+			half4 dif;
+			//diff
+			dif.rgb = s.Albedo.rgb * _LightColor0.rgb * diff * atten * 2.0;
+
 			//spec
-			half4 light;
-			light.rgb = _LightColor0.rgb * diff;
-			light.w = spec * Luminance (_LightColor0.rgb);
-			light *= atten * 2.0;
-			half3 sp = light.a * s.Specular * light.rgb;
+			half3 sp = _spec_multiple * s.Specular.rgb * _LightColor0.rgb * spec * atten * 2.0;
 
 			//fresnel cube
-			half fr = fresnel(s.Normal, viewDir, 
-							  _cube_fresnel_power, 
-							  _cube_fresnel_multiple, 
-							  _cube_fresnel_bias);
+			half3 fr = _cube_color.rgb * s.Rim.rgb * fresnel(s.Normal, viewDir, 
+							  								_cube_fresnel_power, 
+							  								_cube_fresnel_multiple, 
+							  								_cube_fresnel_bias);
+
+			half3 em = _emission_color.rgb * _emission_multiple * s.Emission.rgb;
 
 			half4 c;
-			c.rgb = (s.Albedo * light.rgb + sp.rgb + s.Rim.rgb * fr);
-			c.rgb = c.rgb + s.Emission.rgb;
+			c.rgb = dif.rgb + sp.rgb + fr.rgb + em.rgb;
+			c.a = s.Alpha;
 			return c;
 		}
 		
@@ -115,7 +123,7 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 			INTERNAL_DATA
 		};
 
-		void surf (Input IN, inout DHDSurfaceOutput o) {
+		void surf (Input IN, inout ZSLSurfaceOutput o) {
 			half4 diff = tex2D(_diffuse_tex, (IN.uv_diffuse_tex.xyxy).xy);
 			o.Albedo = _main_color * diff;
 
@@ -124,15 +132,15 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 
 			half4 spec = tex2D(_spec_tex,(IN.uv_diffuse_tex.xyxy).xy);
 			o.Gloss = spec.a;
-			o.Specular = spec * _spec_multiple.xxx;
+			o.Specular = spec;
 
 			half3 emmis = tex2D(_emission_tex, IN.uv_diffuse_tex.xy);
-			o.Emission = emmis * _emission_color * _emission_multiple;
+			o.Emission = emmis;
 
 			half4 mask = tex2D(_cube_mask, (IN.uv_diffuse_tex.xyxy).xy);
 			float3 worldRefl = WorldReflectionVector (IN, o.Normal);
 			half3 rim = texCUBE(_cube_tex, worldRefl).rgb;
-			o.Rim.rgb = rim.rgb * _cube_color * mask.a;
+			o.Rim.rgb = rim.rgb * mask.a;
 			
 			o.Alpha = diff.aaaa;
 		}
