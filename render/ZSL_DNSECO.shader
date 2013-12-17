@@ -41,7 +41,7 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 		ColorMask RGBA
 
 		CGPROGRAM
-		#pragma surface surf BlinnPhongZSL
+		#pragma surface surf BlinnPhongZSL nolightmap noforwardadd
 		#pragma target 3.0
 
 
@@ -67,7 +67,6 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 			half3 Specular;
 			half Gloss;
 			half Alpha;
-			half3 Rim;
 		};
 
 		//Fresnel falloff function for all round application
@@ -95,54 +94,62 @@ Shader "ZSL/Diff-Norm-Spec-Emis-Cube-Outline"
 			half spec = pow (nh, s.Gloss * 128.0);
 			//half spec = pow (nh, s.Gloss);
 			
-			//light
-			half4 dif;
 			//diff
-			dif.rgb = s.Albedo.rgb * _LightColor0.rgb * diff * atten * 2.0;
+			half3 dif = _main_color.rgb * s.Albedo.rgb * _LightColor0.rgb * diff * atten * 2.0;
 
 			//spec
 			half3 sp = _spec_multiple * s.Specular.rgb * _LightColor0.rgb * spec * atten * 2.0;
 
-			//fresnel cube
-			half3 fr = _cube_color.rgb * s.Rim.rgb * fresnel(s.Normal, viewDir, 
-							  								_cube_fresnel_power, 
-							  								_cube_fresnel_multiple, 
-							  								_cube_fresnel_bias);
-
-			half3 em = _emission_color.rgb * _emission_multiple * s.Emission.rgb;
-
 			half4 c;
-			c.rgb = dif.rgb + sp.rgb + fr.rgb + em.rgb;
+			c.rgb = dif.rgb + sp.rgb;
 			c.a = s.Alpha;
 			return c;
 		}
 		
 		struct Input {
 			float2 uv_diffuse_tex;
+			float3 worldPos;
 			float3 worldRefl;
-			INTERNAL_DATA
+			//float3 worldNormal;
+			INTERNAL_DATA 
 		};
 
 		void surf (Input IN, inout ZSLSurfaceOutput o) {
+			//diff and alpha
 			half4 diff = tex2D(_diffuse_tex, (IN.uv_diffuse_tex.xyxy).xy);
-			o.Albedo = _main_color * diff;
+			o.Albedo = diff;
+			o.Alpha = diff.a;
 
+			//normal
 			half3 norm = half3(UnpackNormal(tex2D(_normal_map, (IN.uv_diffuse_tex.xyxy).xy)).xyz);
 			o.Normal = half3(norm.r, -norm.g, norm.b);
 
+			//spec
 			half4 spec = tex2D(_spec_tex,(IN.uv_diffuse_tex.xyxy).xy);
 			o.Gloss = spec.a;
 			o.Specular = spec;
 
-			half3 emmis = tex2D(_emission_tex, IN.uv_diffuse_tex.xy);
-			o.Emission = emmis;
-
+			//fresnel cube
 			half4 mask = tex2D(_cube_mask, (IN.uv_diffuse_tex.xyxy).xy);
 			float3 worldRefl = WorldReflectionVector (IN, o.Normal);
 			half3 rim = texCUBE(_cube_tex, worldRefl).rgb;
-			o.Rim.rgb = rim.rgb * mask.a;
+			rim = rim.rgb * mask.a;
 			
-			o.Alpha = diff.aaaa;
+			// half3 viewDir = normalize(_WorldSpaceCameraPos - IN.worldPos);
+			// half3 normal = WorldNormalVector(IN, o.Normal);
+			// half fr = fresnel(normal, viewDir, 
+			// 				  _cube_fresnel_power, 
+			// 				  _cube_fresnel_multiple, 
+			// 				  _cube_fresnel_bias);
+
+			half fr = 1;
+			half3 cube = _cube_color.rgb * rim.rgb * fr;
+
+			//emmis
+			half3 emmis = tex2D(_emission_tex, IN.uv_diffuse_tex.xy);
+			emmis = _emission_color.rgb * _emission_multiple * emmis.rgb;
+
+			o.Emission = emmis + cube;
 		}
 		
 		ENDCG
