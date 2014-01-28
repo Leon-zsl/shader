@@ -90,7 +90,8 @@ class ColorCorrectionCurvesZSL extends PostEffectsBase
 		rgbDepthChannelTex.wrapMode = TextureWrapMode.Clamp;
 		zCurveTex.wrapMode = TextureWrapMode.Clamp;	
 
-		finalTex = new Texture2D(256, 256, TextureFormat.RGB24, false, true);
+		if(!finalTex)
+			finalTex = new Texture2D(256, 256, TextureFormat.RGB24, false, true);
 		finalTex.hideFlags = HideFlags.None;
 		finalTex.wrapMode = TextureWrapMode.Clamp;
 		finalTex.anisoLevel = 9;

@@ -6,7 +6,6 @@
     Properties {
         _main_color("Main Color", Color) = (1,1,1,1)
         _diffuse_tex("Base Tex(RGB)", 2D) = "white" {}
-        _alpha_threshold("Transparent Threshold", Float) = 0.001
         _uv_speed_u("Offset Speed U", Float) = 0
         _uv_speed_v("Offset Speed V", Float) = 0
         _uv_speed_r("Rotate Speed", Float) = 0
@@ -29,7 +28,6 @@
         float _uv_speed_r;
         float _uv_speed_su;
         float _uv_speed_sv;
-        float _alpha_threshold;
 
         struct Input {
             float2 uv_diffuse_tex;
@@ -53,10 +51,7 @@
             float4 e = tex2D(_diffuse_tex, uv);
             o.Albedo = e.rgb * _main_color.rgb;
 
-            if(dot(e.rgb, e.rgb) < _alpha_threshold)
-                o.Alpha = 0;
-            else
-                o.Alpha = _main_color.a;
+            o.Alpha = _main_color.a * e.a;
         }
         ENDCG
     }
